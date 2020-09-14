@@ -1,0 +1,29 @@
+
+library(ggplot2)
+
+final_third <- runif(200, 0, 15)
+final_third # the number of plays in opponent final third
+
+expected_non_penalty_goals <- runif(200, 0, 2)
+expected_non_penalty_goals # expected goals without penalties
+
+scored <- final_third * runif(200, 0, 0.25) + expected_non_penalty_goals * runif(200, 0, 2)
+scored # final output
+
+quantile(scored) 
+
+data <- data.frame(final_third,expected_non_penalty_goals,scored)
+data
+
+write.csv(data[sample(nrow(data),100),], file = "score_data.csv", row.names = FALSE)
+
+data
+
+ggplot(data, aes(final_third, scored, colour = class)) + 
+  geom_point()
+
+
+ggplot(data, aes(scored, colour = class)) + 
+  geom_histogram()
+
+
