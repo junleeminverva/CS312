@@ -1,0 +1,154 @@
+
+###############################
+##Step 1
+#Loading dataset
+###############################
+
+#reading from csv
+un_peace_data = read.csv("https://tinyurl.com/UNpckpdata")
+
+#printing the top part of the dataset
+head(un_peace_data)
+
+###############################
+##Step 2
+#Checking column for missing values and/or NAs, and dropping the observations that have them
+###############################
+
+#replacing blanks with NA
+un_peace_data[un_peace_data==""] <- NA
+
+#removing observations with NA
+un_peace_data <- na.omit(un_peace_data)
+
+###############################
+##Step 3
+#Changing the object class of the column containing the dates to object of "class" = Date
+###############################
+
+#parsing Last_Reporting_Date with date format
+un_peace_data$Last_Reporting_Date <- as.Date(un_peace_data$Last_Reporting_Date,"%d/%m/%Y")
+
+###############################
+##Step 4
+#Women serving in formed police units for the latest month reported
+###############################
+
+#importing necessary library
+library(dplyr)    
+
+#selecting the latest month's observations
+formed_police_2020_jul <- un_peace_data %>% 
+  filter(Personnel_Type=="Formed Police Units",Last_Reporting_Date==max(un_peace_data$Last_Reporting_Date))
+
+#calculating the ratio of women in formed police unit
+women_in_formed_police_latest <- sum(formed_police_2020_jul$Female_Personnel)/
+  (sum(formed_police_2020_jul$Female_Personnel)+sum(formed_police_2020_jul$Male_Personnel))
+
+#printing the result
+women_in_formed_police_latest
+
+###############################
+##Step 5
+#Replicating the bar plot including the July 2020 percentage
+###############################
+
+#importing necessarry libraries
+library(lubridate)
+library(ggplot2)
+library(scales)
+
+#grouping the dataset by year
+yearly_view <- un_peace_data %>% 
+  filter(Personnel_Type=="Formed Police Units") %>%
+  mutate(Last_Reporting_Year=year(Last_Reporting_Date)) %>%
+  group_by(Last_Reporting_Year) %>%
+  summarise(Sum_Female_Personnel=sum(Female_Personnel),Sum_Male_Personnel=sum(Male_Personnel))
+
+#creating a dataset for plot with ratios in 2017, 2018, 2019
+yearly_plot <- yearly_view %>% 
+  filter(Last_Reporting_Year %in% c(2017,2018,2019)) %>%
+  mutate(women_in_formed_police=(Sum_Female_Personnel/(Sum_Female_Personnel+Sum_Male_Personnel))) %>%
+  select("Last_Reporting_Year","women_in_formed_police")
+
+#creating another dataset with the latest month's ratio and projection for 2028
+new_and_projection <- data.frame(c(gsub(" ", "",paste(toString(year(max(un_peace_data$Last_Reporting_Date)))
+                                                      ,"_",toString(month.abb[month(max(un_peace_data$Last_Reporting_Date))])))
+                                   ,"2028+"),c(women_in_formed_police_latest,0.20))
+names(new_and_projection) <- c("Last_Reporting_Year","women_in_formed_police")
+
+#combining two dataset
+yearly_plot <- rbind(yearly_plot,new_and_projection)
+
+#creating a barplot 
+ggplot(data=yearly_plot, aes(x=Last_Reporting_Year , y=women_in_formed_police)) + 
+  geom_bar(stat="identity", fill="steelblue") +
+  scale_y_continuous(labels = percent_format()) +
+  geom_text(aes(label=percent(women_in_formed_police)), vjust=-1, size=3.5, color="steelblue", fontface=2) + 
+  theme(axis.title = element_blank(),
+        plot.title=element_text(size=20, face=2)
+        ) +
+  ggtitle("WOMEN SERVING IN FORMED POLICE UNITS")
+
+###############################
+##Step 6
+#Finding unique missions for each countries
+###############################
+
+#creating a table for the countries to look at
+countries = data.frame(c("United States","South Korea","India","Germany","Argentina","United Kingdom")
+                       ,c("USA","KOR","IND","DEU","ARG","GBR"))
+
+#renaming column headers
+names(countries) <- c("Country","ISOCode3")
+
+#creating a function to print unique missions
+unique_mission <- function(data) {
+  
+  for (i in seq(nrow(data))) {
+    
+    mission <- unique(trimws(subset(un_peace_data, ISOCode3==data[i,2])$Mission_Acronym))
+    cat(data[i,1],"# of mission:", length(mission),"\n")
+    
+    print(mission)
+    
+  }
+  
+}
+
+#printing the unique missions for each countries
+unique_mission(countries)
+
+###############################
+##Step 7
+#Finding information for the UN Multidimensional Integrated Stabilization Mission in Mali
+###############################
+
+#grouping the dataset by date
+MINUSMA_dataset <- un_peace_data %>% 
+  filter(Mission_Acronym=="MINUSMA") %>%
+  group_by(Last_Reporting_Date) %>%
+  summarise(Total_Personnel=sum(Female_Personnel+Male_Personnel))
+
+#summarizing the dataset
+summary(MINUSMA_dataset$Total_Personnel)
+
+#average of total stationed
+cat("(a) Across time, how much total personnel was stationed there on average?"
+    ,mean(MINUSMA_dataset$Total_Personnel),"\n")
+
+#median of total stationed
+cat("(b) What was the median? "
+    ,median(MINUSMA_dataset$Total_Personnel),"\n")
+
+#the 25th and 75th quantile of total stationed
+cat("(c) The 25th and 75th quartile?",quantile(MINUSMA_dataset$Total_Personnel,c(0.25,0.75)),"\n")
+
+#lowest stationed at all time
+cat("(d) When was the lowest point and how many troops were stationed there then?")
+MINUSMA_dataset[which.min(MINUSMA_dataset$Total_Personnel),]
+
+#highest stationed at all time
+cat("(e) When was the highest and how many?")
+MINUSMA_dataset[which.max(MINUSMA_dataset$Total_Personnel),]
+
