@@ -1,0 +1,73 @@
+
+set.seed(123)
+
+df <- read.csv("http://bit.ly/turnout_data")
+glm2 <- glm(turnout~.,family=binomial, data = df)
+sim_object <- sim(glm2, 1000)
+
+# this creates an empty matrix
+storage.matrix_undergrad <- matrix(NA, nrow = 1000, ncol = 78)
+storage.matrix_college <- matrix(NA, nrow = 1000, ncol = 78)
+
+# this function makes our job a lot easier, automatically calculating the probabilities given a person's characteristics
+get_turnout_prob <- function(coefs, person) {
+  logit <- coefs[1] + person[1]*coefs[2] +
+    person[2]*coefs[3] +
+    person[3]*coefs[4] + 
+    person[4]*coefs[5] +
+    person[5]*coefs[6]
+  
+  return(exp(logit) / (1 + exp(logit)))
+}
+# we have nested loops which means we have loops in loops :)
+# The first one loops over different ages and the second one loops over different simulations.
+for (age in c(18:95)) {
+  for (i in 1:1000)
+  {
+    undergrad_person <- c(mean(df$white), age, 16, mean(df$income), 0.01*age**2)
+    storage.matrix_undergrad[i, age - 17] <- get_turnout_prob(coef(sim_object)[i, ], undergrad_person)
+  }
+}
+
+for (age in c(18:95)) {
+  for (i in 1:1000)
+  {
+    college_person <- c(mean(df$white), age, 12, mean(df$income), 0.01*age**2)
+    storage.matrix_college[i, age - 17] <- get_turnout_prob(coef(sim_object)[i, ], college_person)
+  }
+}
+
+# You need to begin with a plot that has the correct axes and scaling, but no data visualized (i.e., type = "n")... Try this:
+
+plot(x = c(1:100), y = c(1:100), type = "n", xlim = c(18,95), ylim = c(0,1), 
+     main = "Probability of voting by age", xlab = "Age of Respondent", 
+     ylab = "Probability of Voting")
+
+# And then repeatedly use the segments() function to draw the line segments you need. 
+
+# obtain confidence intervals for each age by applying quantile() to each column in a data frame of simulated probabilities.
+conf.intervals_undergrad <- apply(storage.matrix_undergrad, 2, quantile, probs = c(0.005, 0.995))
+conf.intervals_college <- apply(storage.matrix_college, 2, quantile, probs = c(0.005, 0.995))
+
+# In plain English, this line of code above is telling R to "apply" the function "quantile" to every single column (thus the "2", the second argument), and when doing so to use the "probs" setting specified.
+# The output is a matrix with 2 rows (top for the 0.005 percentile, bottom for the 0.995 percentile), and as many columns as there are unique ages between 18 and 95.
+
+for (age in 18:95) {
+  segments(
+    x0 = age,
+    y0 = conf.intervals_undergrad[1, age - 17],
+    x1 = age,
+    y1 = conf.intervals_undergrad[2, age - 17],
+    lwd = 2)
+}
+
+for (age in 18:95) {
+  segments(
+    x0 = age,
+    y0 = conf.intervals_college[1, age - 17],
+    x1 = age,
+    y1 = conf.intervals_college[2, age - 17],
+    lwd = 2)
+}
+
+# Once you've plotted one set (e.g., for university grads), you must plot more segments for high school grads to match the King, Tomz, and Wittenberg figure...
