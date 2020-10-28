@@ -1,0 +1,123 @@
+#### Group 2: Seon, Jun, Ethan
+library(dplyr)
+data2 <- read.csv("https://bit.ly/2SKjUn2")
+#head(data2)
+
+set.seed(112)
+################################
+obs_mean <- mean(filter(data2,treat=="pub.pol")$vote_pop)-mean(filter(data2,treat=="client")$vote_pop)
+
+fisherfun_noblock <- function(nulleffect = 0, Ys = data2$vote_pop,
+                              diffmeans = -0.1575, 
+                              sims = 20000) {
+  
+  storage.vector <- NA
+  for(i in 1:sims) {
+    
+    Y0s <-  c(Ys[1], Ys[2]-nulleffect, 
+              Ys[3], Ys[4]-nulleffect,
+              Ys[5], Ys[6]-nulleffect, 
+              Ys[7], Ys[8]-nulleffect,
+              Ys[9], Ys[10]-nulleffect,
+              Ys[11], Ys[12]-nulleffect,
+              Ys[13], Ys[14]-nulleffect,
+              Ys[15], Ys[16]-nulleffect
+    )
+    
+    Y1s <-  
+      c(Ys[1]+nulleffect, Ys[2], 
+        Ys[3]+nulleffect, Ys[4],
+        Ys[5]+nulleffect, Ys[6], 
+        Ys[7]+nulleffect, Ys[8],
+        Ys[9]+nulleffect, Ys[10], 
+        Ys[11]+nulleffect, Ys[12], 
+        Ys[13]+nulleffect, Ys[14], 
+        Ys[15]+nulleffect, Ys[16]
+      )
+    
+    which_treated <-  sample(c(1:16), 8, replace=FALSE)
+    which_controls <- c(1:16)[-which_treated]
+    
+    storage.vector[i] <- mean(Y1s[which_treated]) - mean(Y0s[which_controls])
+    #blank_vector[i] <- mean(Y1s[1,2,3,4,5,6,7,8] - Y0s([1,2,3,4,5,6,7,8]
+  }
+  return(storage.vector)
+}
+
+result <- fisherfun_noblock()
+hist(result)
+abline(v=obs_mean,lwd=2,col="red")
+
+cat("p-value:", length(result[result<=obs_mean])/20000)
+
+#plot(density(result))
+#abline(v=obs_mean,lwd=2,col="red")
+
+fisherfunction <- function(nulleffect = 0, Ys = data2$vote_pop,
+                           diffmeans = -0.1575, 
+                           sims = 20000) {
+  storage.vector <- NA
+  
+  for(i in 1:sims) {
+    Y0s <-  c(Ys[1], Ys[2]-nulleffect, 
+              Ys[3], Ys[4]-nulleffect,
+              Ys[5], Ys[6]-nulleffect, 
+              Ys[7], Ys[8]-nulleffect,
+              Ys[9], Ys[10]-nulleffect,
+              Ys[11], Ys[12]-nulleffect,
+              Ys[13], Ys[14]-nulleffect,
+              Ys[15], Ys[16]-nulleffect
+    )
+    Y1s <-  
+      c(Ys[1]+nulleffect, Ys[2], 
+        Ys[3]+nulleffect, Ys[4],
+        Ys[5]+nulleffect, Ys[6], 
+        Ys[7]+nulleffect, Ys[8],
+        Ys[9]+nulleffect, Ys[10], 
+        Ys[11]+nulleffect, Ys[12], 
+        Ys[13]+nulleffect, Ys[14], 
+        Ys[15]+nulleffect, Ys[16]
+      )
+    which_treated <- c(sample(c(1,2), 1),
+                       sample(c(3,4), 1),
+                       sample(c(5,6), 1),
+                       sample(c(7,8), 1),
+                       sample(c(9,10), 1),
+                       sample(c(11,12), 1),
+                       sample(c(13,14), 1),
+                       sample(c(15,16), 1))
+    which_controls <- c(1:16)[-which_treated]
+    storage.vector[i] <- mean(Y1s[which_treated]) - mean(Y0s[which_controls])
+  }
+  empirical.pvalue <- sum(storage.vector <= diffmeans)/sims
+  return(storage.vector)
+}
+
+result2 <- fisherfunction()
+#hist(result2)
+#abline(v=obs_mean,lwd=2,col="red")
+
+hist(result2)
+abline(v=obs_mean,lwd=2,col="red")
+
+stor2 <- NA
+n = 1 
+for(i in -35:5/100) {   # running -0.35 to 0.05
+  results4 <- fisherfunction(nulleffect=i)
+  stor2[n] <- length(results4[results4<=obs_mean])/20000 
+  # Group 1:   stor2[n] <- fisherfunction(nulleffect = i) with empirical p-value
+  n = n+1
+}
+plot(x = -35:5/100, y = stor2, type = "l", xlab = "additive sharp null", 
+     ylab = "p-value", col = "blue", lwd = 5, 
+     main = "Relationship Between Sharp Null and P-Value \n(Fisher Exact Test)", ylim = c(0, 1))
+abline(h = 0.05, lty = 3, col = "gray", lwd = 2)
+abline(h = 0.95, lty = 3, col = "gray", lwd = 2)
+abline(h = 0.025, lty = 3, col = "purple", lwd = 2)
+abline(h = 0.975, lty = 3, col = "purple", lwd = 2)
+abline(h = 0.50, lty = 3, col = "pink", lwd = 2)
+abline(v = , col = "pink", lwd = 2, lty = 2)
+abline(v = , col = "purple", lwd = 2, lty = 2)
+abline(v = , col = "gray", lwd = 2,lty = 2)
+abline(v = , col = "purple", lwd = 2, lty = 2)
+abline(v = ,col = "gray", lwd = 2,lty = 2)
