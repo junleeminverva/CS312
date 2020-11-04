@@ -1,0 +1,43 @@
+
+library(swirl)
+library(Matching)
+library(rgenoud)
+
+uninstall_all_courses()
+install_course_github("ahdvnd", "cs112-swirl-courses")
+swirl()
+
+
+lalonde_obs <- read.csv("http://bit.ly/lalonde_obs")
+head(lalonde_obs)
+
+X <- cbind(lalonde_obs$age,
+           lalonde_obs$education,
+           lalonde_obs$black,
+           lalonde_obs$hispanic,
+           lalonde_obs$married,
+           lalonde_obs$nodegree,
+           lalonde_obs$re74,
+           lalonde_obs$re75)
+
+Tr <- lalonde_obs$treat
+
+rr1 <- Match(Tr=Tr, X=X, M=1);
+
+mb1 <- MatchBalance(treat ~ age + education + black + hispanic + married + nodegree + re74 + re75,data = lalonde_obs,
+                    match.out = rr1, nboots = 500)
+
+
+rr3 <- Match(Tr=Tr, X=X, M=3);
+
+mb3 <- MatchBalance(treat ~ age + education + black + hispanic + married + nodegree + re74 + re75,data = lalonde_obs,
+                    match.out = rr3, nboots = 500)
+
+
+genout <- GenMatch(Tr,X,estimand = "ATT",M=1,pop.size = 16,max.generations = 10,wait.generations = 5)
+
+
+mout <- Match(Tr=Tr,X=X,M=1,estimand = "ATT",Weight.matrix = genout)
+
+mbgen <- MatchBalance(treat ~ age + education + black + hispanic + married + nodegree + re74 + re75,data = lalonde_obs,
+                    match.out = mout, nboots = 500)
