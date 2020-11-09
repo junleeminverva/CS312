@@ -1,0 +1,67 @@
+foo <- read.csv("https://tinyurl.com/y2zt2hyc")
+
+#Take 2-3 minutes and familiarize yourself with the basic contours of the data.
+
+# extract relevant columns
+foo <- foo[, c(6:8, 11:16, 99, 50, 114, 49, 63, 136, 109, 126, 48, 160, 142, 10)]
+
+# remove 2 rows with missing data (there are better ways to handle missing data, but this is fine for now.)
+foo <- foo[c(-19, -47), ]
+
+# check that all missing data is gone...
+which(is.na(foo) == TRUE)
+
+# take a peek at the data set (identify the columns)
+head(foo)
+dim(foo)
+
+names(foo)
+unique(foo$untype4) # 0 and 1
+length(foo$untype4) # control units
+nrow(foo)           # control and treated units
+sum(foo$untype4)    # treated units
+
+
+foo_glm <- glm(pbs2s3 ~ wartype+logcost+wardur+factnum+factnum2+trnsfcap+untype4+treaty+develop+exp+decade,
+   data = foo, family = binomial)
+summary(foo_glm)
+library(Matching)
+
+prop1 <- glm(untype4 ~ wartype + logcost + wardur + factnum + factnum2 + trnsfcap + treaty + develop + exp + decade, data = foo, family = "binomial")
+
+#prop1$fitted[which(foo$untype4 == 1)]
+mout <- Match(X = prop1$fitted, Tr = foo$untype4)
+foo[mout$index.treated, 1:5]
+foo[mout$index.control, 1:5]
+
+mb <- MatchBalance(foo$untype4 ~ foo$wartype + foo$logcost + foo$wardur + foo$factnum + foo$factnum2 + foo$trnsfcap + foo$treaty + foo$develop + foo$exp + foo$decade, match.out=mout, nboots=1000)
+
+#After Matching Minimum p.value: 0.006 
+#Variable Name(s): foo$develop  Number(s): 8 
+
+
+X <- cbind(foo$wartype, foo$logcost, foo$wardur, foo$factnum, foo$factnum2, foo$trnsfcap, foo$treaty, foo$develop, foo$exp, foo$decade)
+
+mout <- Match(X = X, Tr = foo$untype4)
+
+mb <- MatchBalance(foo$untype4 ~ foo$wartype + foo$logcost + foo$wardur + foo$factnum + foo$factnum2 + foo$trnsfcap + foo$treaty + foo$develop + foo$exp + foo$decade, match.out=mout, nboots=1000)
+
+# After Matching Minimum p.value: 0.012	077 
+# Variable Name(s): foo$treaty  Number(s): 7 
+
+#install.packages("rgenoud")
+library(rgenoud)
+
+X <- cbind(foo$wartype, foo$logcost, foo$wardur, foo$factnum, foo$factnum2, foo$trnsfcap, foo$treaty, foo$develop, foo$exp, foo$decade)
+
+genout <- GenMatch(X=X, Tr = foo$untype4)
+
+mout <- Match(X = X, Tr = foo$untype4, Weight.matrix=genout)
+
+mb <- MatchBalance(foo$untype4 ~ foo$wartype + foo$logcost + foo$wardur + foo$factnum + foo$factnum2 + foo$trnsfcap + foo$treaty + foo$develop + foo$exp + foo$decade, match.out=mout, nboots=1000)
+
+
+#
+#After Matching Minimum p.value: 0.2483 
+#Variable Name(s): foo$develop  Number(s): 8 
+#
